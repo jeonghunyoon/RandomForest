@@ -13,6 +13,7 @@ uci repository를 이용하여, RandomForest를 실험해본다.
 import urllib
 import random
 import numpy as np
+import matplotlib.pyplot as plot
 
 from sklearn import tree
 
@@ -54,7 +55,7 @@ testY = map(float, testY)
 ##### 3. learning을 수행한다. features는 각 learner마다 다르게 선택한다. regression tree의 경우 논문에서는
 #####    전체 feature set의 1/3을 추천했다.
 maxTree = 30
-treeDepth = 12
+treeDepth = 15
 nFeat = len(trainX[0])
 # candidate features의 수는 전체 features의 1/3으로 한다.
 # TODO features의 개수를 3, 4로 했을 때, mse의 차이가 좀 크다.
@@ -83,6 +84,8 @@ for iTree in range(maxTree):
     # model learning
     model = tree.DecisionTreeRegressor(max_depth=treeDepth)
     model.fit(canTrainX, canTrainY)
+
+    modelList.append(model)
 
     # test set을 predict 한 값을 predict list에 넣기 전에, test set또한 candidate features만 가지는 데이터로 만든다.
     canTestX = []
@@ -115,6 +118,27 @@ for iModel in range(maxTree):
     mse.append(sum(error * error) / nTest)
 
     # coefficient를 구한다.
+    coefList.append(np.corrcoef(np.array([prediction[i][0] for i in range(nTest)]), np.array(testY))[0][1])
 
 
 ##### 5. plot으로 찍어본다.
+nModels = [i+1 for i in range(len(modelList))]
+
+plot.plot(nModels, mse)
+plot.axis('tight')
+plot.xlabel('Number of Trees in Ensemble')
+plot.ylabel('Mean Squared Error')
+plot.ylim(0.0, max(mse))
+plot.show()
+
+plot.figure()
+
+plot.plot(nModels, coefList)
+plot.axis('tight')
+plot.xlabel('Number of Trees in Ensemble')
+plot.ylabel('Coefficient Correlations')
+plot.ylim(min(coefList), 1.0)
+plot.show()
+
+print 'Minimum MSE : %f' %(min(mse))
+print 'Maximum CorrCoef : %f' %(max(coefList))

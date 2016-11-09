@@ -12,6 +12,7 @@ uci repository를 이용하여, RandomForest를 실험해본다.
 
 import urllib
 import random
+import numpy as np
 
 from sklearn import tree
 
@@ -45,13 +46,19 @@ testY = [yData[idx] for idx in testIdx]
 trainX = [xData[idx] for idx in range(nData) if idx not in testIdx]
 trainY = [yData[idx] for idx in range(nData) if idx not in testIdx]
 
+# testY, trainY를 실수화한다.
+trainY = map(float, trainY)
+testY = map(float, testY)
+
+
 ##### 3. learning을 수행한다. features는 각 learner마다 다르게 선택한다. regression tree의 경우 논문에서는
 #####    전체 feature set의 1/3을 추천했다.
 maxTree = 30
-treeDepth = 5
+treeDepth = 12
 nFeat = len(trainX[0])
 # candidate features의 수는 전체 features의 1/3으로 한다.
-nCanFeat = int(nFeat * 1/3)
+# TODO features의 개수를 3, 4로 했을 때, mse의 차이가 좀 크다.
+nCanFeat = int(nFeat * 1/3) + 1
 
 # model list와 predict list를 생성한다. predict list에는 n까지의 base learner의 predict 값이 들어간다. 따라서 nCol = 30
 modelList = []
@@ -63,8 +70,10 @@ for iTree in range(maxTree):
     canFeatIdx.sort()
 
     # train data의 50%를 랜덤하게 추출 (사용자가 추출 비율값을 변경할 수 있다.) candidate features만 가지는 데이터.
+    # 결국 이것은 bagging 기법이라고 볼 수 있다.
     # TODO : 나중에는 xTrain을 대상으로 해보자.
     canTrainIdx = random.sample(range(nTrain), int(nTrain*0.5))
+    canTrainIdx.sort()
     canTrainX = []
     canTrainY = []
     for idx in canTrainIdx:
@@ -75,10 +84,37 @@ for iTree in range(maxTree):
     model = tree.DecisionTreeRegressor(max_depth=treeDepth)
     model.fit(canTrainX, canTrainY)
 
-    # test set을 predict 한 값을 predict list에 넣는다.
+    # test set을 predict 한 값을 predict list에 넣기 전에, test set또한 candidate features만 가지는 데이터로 만든다.
+    canTestX = []
+    for idx in range(nTest):
+        canTestX.append([testX[idx][feat] for feat in canFeatIdx])
+
+    prediction = []
+    for testData in canTestX:
+        prediction.append(model.predict(testData))
+
+    predList.append(prediction)
 
 
 ##### 4. test를 진행해보고 mse 및 coefficient를 구해본다.
+mse = []
+coefList = []
+allPrediction = []
+
+# n번째 모델까지의 prediction 값의 합을 구한다. 그래야 모델의 수가 증가하면서의 예측값들의 변화량과 mse의 변화량을 알수가 있다.
+for iModel in range(maxTree):
+    prediction = []
+    for idxTest in range(nTest):
+        # prediction의 값은 n모델 까지의 prediction의 합의 평균이다.
+        prediction.append(sum([predList[idxModel][idxTest] for idxModel in range(iModel+1)]) / (iModel + 1))
+
+    allPrediction.append(prediction)
+
+    # mse를 구한다.
+    error = np.array([prediction[i][0] for i in range(nTest)]) - np.array(testY)
+    mse.append(sum(error * error) / nTest)
+
+    # coefficient를 구한다.
 
 
 ##### 5. plot으로 찍어본다.

@@ -54,8 +54,8 @@ testY = map(float, testY)
 
 ##### 3. learning을 수행한다. features는 각 learner마다 다르게 선택한다. regression tree의 경우 논문에서는
 #####    전체 feature set의 1/3을 추천했다.
-maxTree = 30
-treeDepth = 15
+maxTree = 500
+treeDepth = 8
 nFeat = len(trainX[0])
 # candidate features의 수는 전체 features의 1/3으로 한다.
 # TODO features의 개수를 3, 4로 했을 때, mse의 차이가 좀 크다.
@@ -128,7 +128,7 @@ plot.plot(nModels, mse)
 plot.axis('tight')
 plot.xlabel('Number of Trees in Ensemble')
 plot.ylabel('Mean Squared Error')
-plot.ylim(0.0, max(mse))
+plot.ylim(0.2, max(mse))
 plot.show()
 
 plot.figure()
